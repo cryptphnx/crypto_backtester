@@ -3,12 +3,37 @@ import dash
 from dash import dcc, html, Input, Output, State, dash_table
 import plotly.graph_objects as go
 import pandas as pd
+import json
 from backtesting import run_backtest
 from optimization import run_optimization
 from data import get_historical_data
 
 app = dash.Dash(__name__)
 server = app.server
+
+# Define default strategy parameters (matching the defaults in your strategy.py)
+DEFAULT_PARAMS = {
+    "longTermFastLen": 50,
+    "longTermSlowLen": 200,
+    "shortTermFastLen": 10,
+    "shortTermSlowLen": 20,
+    "fixedStopLossPct": 0.01,
+    "fixedTakeProfitPct": 0.02,
+    "fixedTrailingPct": 0.01,
+    "useAdxFilter": False,
+    "adxPeriod": 14,
+    "adxThreshold": 20.0,
+    "useVolumeFilter": False,
+    "volumeMALen": 20,
+    "useRSIFilter": False,
+    "rsiPeriod": 14,
+    "rsiLongThreshold": 50.0,
+    "rsiShortThreshold": 50.0,
+    "useAtrFilter": False,
+    "atrFilterThreshold": 0.01,
+    "enableHigherTFFilter": False,
+    "enableSessionFilter": False,
+}
 
 app.layout = html.Div(style={'backgroundColor': 'black', 'color': 'yellow', 'padding': '20px'}, children=[
     html.H1("Crypto Backtesting Dashboard"),
@@ -37,7 +62,7 @@ app.layout = html.Div(style={'backgroundColor': 'black', 'color': 'yellow', 'pad
         html.Button("Run Optimization", id="run-optimization", n_clicks=0)
     ]),
     html.Br(),
-    # Wrap outputs in a loading component to show progress during optimization/backtest.
+    # Wrap outputs in a Loading component to show progress during processing.
     dcc.Loading(
         id="loading-indicator",
         type="default",
@@ -63,8 +88,11 @@ def update_dashboard(n_backtest, n_optimization, symbol, timeframe):
     button_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
     if button_id == "run-backtest":
-        # Run backtest and capture additional info.
-        initial_value, final_value, trade_log, cerebro = run_backtest(symbol=symbol, timeframe=timeframe)
+        # Run backtest with default parameters (or you could pass modified ones)
+        initial_value, final_value, trade_log, cerebro = run_backtest(
+            symbol=symbol, timeframe=timeframe, start_str='1 month ago UTC',
+            strategy_params=DEFAULT_PARAMS
+        )
         net_profit = final_value - initial_value
         num_trades = len(trade_log)
         
@@ -72,7 +100,10 @@ def update_dashboard(n_backtest, n_optimization, symbol, timeframe):
             html.P(f"Initial Portfolio Value: {initial_value:.2f}"),
             html.P(f"Final Portfolio Value: {final_value:.2f}"),
             html.P(f"Net Profit: {net_profit:.2f}"),
-            html.P(f"Number of Trades: {num_trades}")
+            html.P(f"Number of Trades: {num_trades}"),
+            html.Hr(),
+            html.H3("Strategy Parameters Used:"),
+            html.Pre(json.dumps(DEFAULT_PARAMS, indent=2))
         ]
         
         if trade_log:
@@ -98,8 +129,17 @@ def update_dashboard(n_backtest, n_optimization, symbol, timeframe):
 
     elif button_id == "run-optimization":
         best_value, best_strategy = run_optimization(symbol=symbol, timeframe=timeframe)
-        metrics_text = f"Best Portfolio Value from Optimization: {best_value:.2f}"
-        return metrics_text, go.Figure()
+        # best_strategy is assumed to have best parameters stored in a dictionary.
+        # Our ga_optimization.py returns a tuple (best_params, best_value) from main(),
+        # so we assume best_strategy is that dictionary.
+        best_params = best_strategy  # In our GA code, best_params are returned.
+        metrics_components = [
+            html.P(f"Best Portfolio Value from Optimization: {best_value:.2f}"),
+            html.Hr(),
+            html.H3("Best Strategy Parameters:"),
+            html.Pre(json.dumps(best_params, indent=2))
+        ]
+        return metrics_components, go.Figure()
 
 if __name__ == "__main__":
     app.run_server(debug=True)
