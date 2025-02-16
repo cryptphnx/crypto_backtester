@@ -1,29 +1,12 @@
+# ga_optimization.py
 import random
+import multiprocessing
 from deap import base, creator, tools, algorithms
-from backtesting import run_backtest
+import backtrader as bt
+from data import get_historical_data
+from strategy import PineStrategy
 
-# Define parameter boundaries for 20 parameters in order:
-# Order:
-#  0: longTermFastLen (int, [10, 200])
-#  1: longTermSlowLen (int, [100, 400])
-#  2: shortTermFastLen (int, [5, 20])
-#  3: shortTermSlowLen (int, [15, 30])
-#  4: fixedStopLossPct (float, [0.005, 0.11])
-#  5: fixedTakeProfitPct (float, [0.015, 0.12])
-#  6: fixedTrailingPct (float, [0.005, 0.11])
-#  7: useAdxFilter (bool as float, [0, 1])
-#  8: adxPeriod (int, [10, 18])
-#  9: adxThreshold (float, [15.0, 25.0])
-# 10: useVolumeFilter (bool, [0, 1])
-# 11: volumeMALen (int, [15, 25])
-# 12: useRSIFilter (bool, [0, 1])
-# 13: rsiPeriod (int, [10, 18])
-# 14: rsiLongThreshold (float, [45.0, 55.0])
-# 15: rsiShortThreshold (float, [45.0, 55.0])
-# 16: useAtrFilter (bool, [0, 1])
-# 17: atrFilterThreshold (float, [0.005, 0.015])
-# 18: enableHigherTFFilter (bool, [0, 1])
-# 19: enableSessionFilter (bool, [0, 1])
+# Parameter boundaries for 20 parameters (as defined previously)
 PARAM_BOUNDARIES = [
     (10, 200),      # longTermFastLen
     (100, 400),     # longTermSlowLen
@@ -54,7 +37,6 @@ creator.create("Individual", list, fitness=creator.FitnessMax)
 
 toolbox = base.Toolbox()
 
-# Attribute generator: generate a random value for a gene given its boundaries.
 def random_gene(bound):
     return random.uniform(bound[0], bound[1])
 
@@ -64,11 +46,9 @@ def create_individual():
 toolbox.register("individual", tools.initIterate, creator.Individual, create_individual)
 toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 
-# Fitness evaluation function: run the backtest with the given parameters and return final portfolio value.
 def eval_individual(individual):
-    # Convert the individual list into a strategy parameters dictionary.
+    # Convert individual list into a strategy parameters dictionary.
     params = {}
-    # Strategy parameters (indices 0-6):
     params["longTermFastLen"] = int(round(individual[0]))
     params["longTermSlowLen"] = int(round(individual[1]))
     params["shortTermFastLen"] = int(round(individual[2]))
@@ -76,7 +56,6 @@ def eval_individual(individual):
     params["fixedStopLossPct"] = float(individual[4])
     params["fixedTakeProfitPct"] = float(individual[5])
     params["fixedTrailingPct"] = float(individual[6])
-    # Filter parameters (indices 7-19):
     params["useAdxFilter"] = True if individual[7] >= 0.5 else False
     params["adxPeriod"] = int(round(individual[8]))
     params["adxThreshold"] = float(individual[9])
@@ -93,7 +72,6 @@ def eval_individual(individual):
 
     try:
         # Run backtest with these parameters.
-        # Here we use a fixed symbol/timeframe for demonstration.
         init_val, final_val, trade_log, cerebro = run_backtest(
             symbol='BTCUSDT',
             timeframe='5m',
@@ -113,8 +91,13 @@ toolbox.register("select", tools.selTournament, tournsize=3)
 
 def main():
     random.seed(42)
-    pop = toolbox.population(n=50)  # Starting population of 50 individuals.
-    ngen = 10  # Run for 10 generations (adjust as needed)
+    
+    # Create a multiprocessing pool.
+    pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
+    toolbox.register("map", pool.map)
+    
+    pop = toolbox.population(n=50)  # Initial population
+    ngen = 10  # Number of generations (adjust as needed)
     cxpb = 0.5  # Crossover probability
     mutpb = 0.2  # Mutation probability
 
@@ -124,7 +107,6 @@ def main():
     best_ind = tools.selBest(pop, 1)[0]
     best_value = best_ind.fitness.values[0]
     
-    # Convert best individual into a parameters dictionary.
     best_params = {
         "longTermFastLen": int(round(best_ind[0])),
         "longTermSlowLen": int(round(best_ind[1])),
@@ -150,6 +132,10 @@ def main():
     
     print("Best Final Portfolio Value:", best_value)
     print("Best Parameters:", best_params)
+    
+    pool.close()
+    pool.join()
+    
     return best_params, best_value
 
 if __name__ == "__main__":
