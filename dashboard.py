@@ -5,13 +5,13 @@ import plotly.graph_objects as go
 import pandas as pd
 import json
 from backtesting import run_backtest
-from optimization import run_optimization
+from ga_optimization import run_optimization
 from data import get_historical_data
 
 app = dash.Dash(__name__)
 server = app.server
 
-# Define default strategy parameters (matching the defaults in your strategy.py)
+# Default strategy parameters used for backtesting
 DEFAULT_PARAMS = {
     "longTermFastLen": 50,
     "longTermSlowLen": 200,
@@ -62,7 +62,7 @@ app.layout = html.Div(style={'backgroundColor': 'black', 'color': 'yellow', 'pad
         html.Button("Run Optimization", id="run-optimization", n_clicks=0)
     ]),
     html.Br(),
-    # Wrap outputs in a Loading component to show progress during processing.
+    # Wrap outputs in a loading component to show progress.
     dcc.Loading(
         id="loading-indicator",
         type="default",
@@ -88,7 +88,6 @@ def update_dashboard(n_backtest, n_optimization, symbol, timeframe):
     button_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
     if button_id == "run-backtest":
-        # Run backtest with default parameters (or you could pass modified ones)
         initial_value, final_value, trade_log, cerebro = run_backtest(
             symbol=symbol, timeframe=timeframe, start_str='1 month ago UTC',
             strategy_params=DEFAULT_PARAMS
@@ -128,11 +127,7 @@ def update_dashboard(n_backtest, n_optimization, symbol, timeframe):
         return metrics_components, fig
 
     elif button_id == "run-optimization":
-        best_value, best_strategy = run_optimization(symbol=symbol, timeframe=timeframe)
-        # best_strategy is assumed to have best parameters stored in a dictionary.
-        # Our ga_optimization.py returns a tuple (best_params, best_value) from main(),
-        # so we assume best_strategy is that dictionary.
-        best_params = best_strategy  # In our GA code, best_params are returned.
+        best_value, best_params = run_optimization(symbol=symbol, timeframe=timeframe)
         metrics_components = [
             html.P(f"Best Portfolio Value from Optimization: {best_value:.2f}"),
             html.Hr(),
