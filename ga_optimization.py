@@ -6,7 +6,7 @@ import backtrader as bt
 from data import get_historical_data
 from strategy import PineStrategy
 
-# Parameter boundaries for 20 parameters (as defined previously)
+# Define parameter boundaries for 20 parameters
 PARAM_BOUNDARIES = [
     (10, 200),      # longTermFastLen
     (100, 400),     # longTermSlowLen
@@ -29,7 +29,7 @@ PARAM_BOUNDARIES = [
     (0, 1),         # enableHigherTFFilter
     (0, 1)          # enableSessionFilter
 ]
-NUM_PARAMS = len(PARAM_BOUNDARIES)  # Should be 20
+NUM_PARAMS = len(PARAM_BOUNDARIES)  # 20 parameters
 
 # Set up the DEAP framework
 creator.create("FitnessMax", base.Fitness, weights=(1.0,))
@@ -47,7 +47,7 @@ toolbox.register("individual", tools.initIterate, creator.Individual, create_ind
 toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 
 def eval_individual(individual):
-    # Convert individual list into a strategy parameters dictionary.
+    # Convert the individual list into a strategy parameters dictionary.
     params = {}
     params["longTermFastLen"] = int(round(individual[0]))
     params["longTermSlowLen"] = int(round(individual[1]))
@@ -71,7 +71,7 @@ def eval_individual(individual):
     params["enableSessionFilter"] = True if individual[19] >= 0.5 else False
 
     try:
-        # Run backtest with these parameters.
+        # Run the backtest with these parameters.
         init_val, final_val, trade_log, cerebro = run_backtest(
             symbol='BTCUSDT',
             timeframe='5m',
@@ -89,15 +89,15 @@ toolbox.register("mate", tools.cxBlend, alpha=0.5)
 toolbox.register("mutate", tools.mutGaussian, mu=0, sigma=1.0, indpb=0.2)
 toolbox.register("select", tools.selTournament, tournsize=3)
 
-def main():
+def run_optimization(symbol='BTCUSDT', timeframe='5m', start_str='1 month ago UTC'):
     random.seed(42)
     
-    # Create a multiprocessing pool.
+    # Create a multiprocessing pool and register its map function.
     pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
     toolbox.register("map", pool.map)
     
-    pop = toolbox.population(n=50)  # Initial population
-    ngen = 10  # Number of generations (adjust as needed)
+    pop = toolbox.population(n=50)  # Starting population of 50 individuals.
+    ngen = 10  # Run for 10 generations (adjust as needed)
     cxpb = 0.5  # Crossover probability
     mutpb = 0.2  # Mutation probability
 
@@ -107,6 +107,7 @@ def main():
     best_ind = tools.selBest(pop, 1)[0]
     best_value = best_ind.fitness.values[0]
     
+    # Convert best individual into a parameters dictionary.
     best_params = {
         "longTermFastLen": int(round(best_ind[0])),
         "longTermSlowLen": int(round(best_ind[1])),
@@ -118,25 +119,4 @@ def main():
         "useAdxFilter": True if best_ind[7] >= 0.5 else False,
         "adxPeriod": int(round(best_ind[8])),
         "adxThreshold": float(best_ind[9]),
-        "useVolumeFilter": True if best_ind[10] >= 0.5 else False,
-        "volumeMALen": int(round(best_ind[11])),
-        "useRSIFilter": True if best_ind[12] >= 0.5 else False,
-        "rsiPeriod": int(round(best_ind[13])),
-        "rsiLongThreshold": float(best_ind[14]),
-        "rsiShortThreshold": float(best_ind[15]),
-        "useAtrFilter": True if best_ind[16] >= 0.5 else False,
-        "atrFilterThreshold": float(best_ind[17]),
-        "enableHigherTFFilter": True if best_ind[18] >= 0.5 else False,
-        "enableSessionFilter": True if best_ind[19] >= 0.5 else False,
-    }
-    
-    print("Best Final Portfolio Value:", best_value)
-    print("Best Parameters:", best_params)
-    
-    pool.close()
-    pool.join()
-    
-    return best_params, best_value
-
-if __name__ == "__main__":
-    best_params, best_value = main()
+        "useVolumeFilter": True if best_ind[10] >= 0.5 els
