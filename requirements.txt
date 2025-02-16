@@ -1,0 +1,10 @@
+backtrader
+python-binance
+plotly
+dash
+ccxt
+pandas
+numpy
+deap
+dateparser
+requests
