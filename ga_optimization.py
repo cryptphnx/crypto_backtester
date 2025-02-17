@@ -13,9 +13,9 @@ PARAM_BOUNDARIES = [
     (100, 400),     # longTermSlowLen
     (5, 20),        # shortTermFastLen
     (15, 30),       # shortTermSlowLen
-    (0.005, 0.11),  # fixedStopLossPct
-    (0.015, 0.12),  # fixedTakeProfitPct
-    (0.005, 0.11),  # fixedTrailingPct
+    (1, 10),        # fixedStopLossPct: from 1 to 10
+    (1, 10),        # fixedTakeProfitPct: from 1 to 10
+    (1, 10),        # fixedTrailingPct: from 1 to 10
     (0, 1),         # useAdxFilter
     (10, 18),       # adxPeriod
     (15.0, 25.0),   # adxThreshold
@@ -129,7 +129,7 @@ def run_optimization(symbol='BTCUSDT', timeframe='5m', start_str='1 month ago UT
         "useAtrFilter": True if best_ind[16] >= 0.5 else False,
         "atrFilterThreshold": float(best_ind[17]),
         "enableHigherTFFilter": True if best_ind[18] >= 0.5 else False,
-        "enableSessionFilter": True if best_ind[19] >= 0.5 else False
+        "enableSessionFilter": True if best_ind[19] >= 0.5 else False,
     }
     
     print("Best Final Portfolio Value:", best_value)
