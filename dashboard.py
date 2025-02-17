@@ -111,7 +111,6 @@ def update_dashboard(n_backtest, n_optimization, symbol, timeframe):
         ]
         
         if trade_log:
-            # Display the full trade log table with all columns.
             table = dash_table.DataTable(
                 columns=[{"name": col, "id": col} for col in trade_log[0].keys()],
                 data=trade_log,
