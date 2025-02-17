@@ -17,7 +17,7 @@ class PineStrategy(bt.Strategy):
         atrStopLossFactor=1.0,
         atrTakeProfitFactor=2.0,
         useAtrStopLoss=False,
-        # Filters (disabled by default)
+        # Filter parameters (disabled by default)
         useAdxFilter=False,
         adxPeriod=14,
         adxThreshold=20.0,
@@ -45,7 +45,7 @@ class PineStrategy(bt.Strategy):
         self.trade_log = []
 
     def next(self):
-        # Determine overall trend and entry signals (simplified logic)
+        # Determine overall trend and generate entry signals (simplified logic)
         bullTrend = self.emaLongFast[0] > self.emaLongSlow[0]
         bearTrend = self.emaLongFast[0] < self.emaLongSlow[0]
         
@@ -60,7 +60,7 @@ class PineStrategy(bt.Strategy):
             elif shortSignal:
                 self.sell()
         else:
-            # Exit logic using Fixed exit method for demonstration.
+            # Simplified exit logic using Fixed exit method for demonstration.
             entry_price = self.position.price
             if self.position.size > 0:
                 if self.params.exitMethod == "Fixed":
