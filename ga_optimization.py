@@ -5,6 +5,7 @@ from deap import base, creator, tools, algorithms
 import backtrader as bt
 from data import get_historical_data
 from strategy import PineStrategy
+from backtesting import run_backtest
 
 # Define parameter boundaries for 20 parameters
 PARAM_BOUNDARIES = [
@@ -15,7 +16,7 @@ PARAM_BOUNDARIES = [
     (0.005, 0.11),  # fixedStopLossPct
     (0.015, 0.12),  # fixedTakeProfitPct
     (0.005, 0.11),  # fixedTrailingPct
-    (0, 1),         # useAdxFilter (0=False, 1=True)
+    (0, 1),         # useAdxFilter
     (10, 18),       # adxPeriod
     (15.0, 25.0),   # adxThreshold
     (0, 1),         # useVolumeFilter
@@ -48,30 +49,31 @@ toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 
 def eval_individual(individual):
     # Convert the individual list into a strategy parameters dictionary.
-    params = {}
-    params["longTermFastLen"] = int(round(individual[0]))
-    params["longTermSlowLen"] = int(round(individual[1]))
-    params["shortTermFastLen"] = int(round(individual[2]))
-    params["shortTermSlowLen"] = int(round(individual[3]))
-    params["fixedStopLossPct"] = float(individual[4])
-    params["fixedTakeProfitPct"] = float(individual[5])
-    params["fixedTrailingPct"] = float(individual[6])
-    params["useAdxFilter"] = True if individual[7] >= 0.5 else False
-    params["adxPeriod"] = int(round(individual[8]))
-    params["adxThreshold"] = float(individual[9])
-    params["useVolumeFilter"] = True if individual[10] >= 0.5 else False
-    params["volumeMALen"] = int(round(individual[11]))
-    params["useRSIFilter"] = True if individual[12] >= 0.5 else False
-    params["rsiPeriod"] = int(round(individual[13]))
-    params["rsiLongThreshold"] = float(individual[14])
-    params["rsiShortThreshold"] = float(individual[15])
-    params["useAtrFilter"] = True if individual[16] >= 0.5 else False
-    params["atrFilterThreshold"] = float(individual[17])
-    params["enableHigherTFFilter"] = True if individual[18] >= 0.5 else False
-    params["enableSessionFilter"] = True if individual[19] >= 0.5 else False
+    params = {
+        "longTermFastLen": int(round(individual[0])),
+        "longTermSlowLen": int(round(individual[1])),
+        "shortTermFastLen": int(round(individual[2])),
+        "shortTermSlowLen": int(round(individual[3])),
+        "fixedStopLossPct": float(individual[4]),
+        "fixedTakeProfitPct": float(individual[5]),
+        "fixedTrailingPct": float(individual[6]),
+        "useAdxFilter": True if individual[7] >= 0.5 else False,
+        "adxPeriod": int(round(individual[8])),
+        "adxThreshold": float(individual[9]),
+        "useVolumeFilter": True if individual[10] >= 0.5 else False,
+        "volumeMALen": int(round(individual[11])),
+        "useRSIFilter": True if individual[12] >= 0.5 else False,
+        "rsiPeriod": int(round(individual[13])),
+        "rsiLongThreshold": float(individual[14]),
+        "rsiShortThreshold": float(individual[15]),
+        "useAtrFilter": True if individual[16] >= 0.5 else False,
+        "atrFilterThreshold": float(individual[17]),
+        "enableHigherTFFilter": True if individual[18] >= 0.5 else False,
+        "enableSessionFilter": True if individual[19] >= 0.5 else False,
+    }
 
     try:
-        # Run the backtest with these parameters.
+        # Run backtest with these parameters.
         init_val, final_val, trade_log, cerebro = run_backtest(
             symbol='BTCUSDT',
             timeframe='5m',
@@ -97,7 +99,7 @@ def run_optimization(symbol='BTCUSDT', timeframe='5m', start_str='1 month ago UT
     toolbox.register("map", pool.map)
     
     pop = toolbox.population(n=50)  # Starting population of 50 individuals.
-    ngen = 10  # Run for 10 generations (adjust as needed)
+    ngen = 10  # Number of generations (adjust as needed)
     cxpb = 0.5  # Crossover probability
     mutpb = 0.2  # Mutation probability
 
@@ -107,7 +109,6 @@ def run_optimization(symbol='BTCUSDT', timeframe='5m', start_str='1 month ago UT
     best_ind = tools.selBest(pop, 1)[0]
     best_value = best_ind.fitness.values[0]
     
-    # Convert best individual into a parameters dictionary.
     best_params = {
         "longTermFastLen": int(round(best_ind[0])),
         "longTermSlowLen": int(round(best_ind[1])),
@@ -119,4 +120,27 @@ def run_optimization(symbol='BTCUSDT', timeframe='5m', start_str='1 month ago UT
         "useAdxFilter": True if best_ind[7] >= 0.5 else False,
         "adxPeriod": int(round(best_ind[8])),
         "adxThreshold": float(best_ind[9]),
-        "useVolumeFilter": True if best_ind[10] >= 0.5 els
+        "useVolumeFilter": True if best_ind[10] >= 0.5 else False,
+        "volumeMALen": int(round(best_ind[11])),
+        "useRSIFilter": True if best_ind[12] >= 0.5 else False,
+        "rsiPeriod": int(round(best_ind[13])),
+        "rsiLongThreshold": float(best_ind[14]),
+        "rsiShortThreshold": float(best_ind[15]),
+        "useAtrFilter": True if best_ind[16] >= 0.5 else False,
+        "atrFilterThreshold": float(best_ind[17]),
+        "enableHigherTFFilter": True if best_ind[18] >= 0.5 else False,
+        "enableSessionFilter": True if best_ind[19] >= 0.5 else False
+    }
+    
+    print("Best Final Portfolio Value:", best_value)
+    print("Best Parameters:", best_params)
+    
+    pool.close()
+    pool.join()
+    
+    return best_value, best_params
+
+if __name__ == "__main__":
+    best_value, best_params = run_optimization()
+    print(f"Best Portfolio Value: {best_value}")
+    print("Best Parameters:", best_params)
