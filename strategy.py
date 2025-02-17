@@ -10,9 +10,9 @@ class PineStrategy(bt.Strategy):
         shortTermSlowLen=20,
         # Exit method: "Fixed", "Trailing", or "ATR"
         exitMethod="Fixed",
-        fixedStopLossPct=1,      # Now 1% instead of 0.01
-        fixedTakeProfitPct=2,    # Now 2% instead of 0.02
-        fixedTrailingPct=1.5,    # Now 1.5% instead of 0.01
+        fixedStopLossPct=1,      # default now represents percent (1%)
+        fixedTakeProfitPct=2,    # default now represents percent (2%)
+        fixedTrailingPct=1.5,    # default now represents percent (1.5%)
         atrPeriod=14,
         atrStopLossFactor=1.0,
         atrTakeProfitFactor=2.0,
@@ -41,11 +41,32 @@ class PineStrategy(bt.Strategy):
         self.emaShortSlow = bt.indicators.ExponentialMovingAverage(self.data.close, period=self.params.shortTermSlowLen)
         # ATR indicator
         self.atr = bt.indicators.ATR(self.data, period=self.params.atrPeriod)
-        # Initialize trade log list
+        # Initialize trade log and order info holders.
         self.trade_log = []
+        self.entry_order_info = {}
+        self.exit_order_info = {}
+        self._exit_reason = None
+
+    def notify_order(self, order):
+        # This method logs order execution details.
+        if order.status == order.Completed:
+            if order.isbuy():
+                self.entry_order_info = {
+                    "type": "buy",
+                    "price": order.executed.price,
+                    "size": order.executed.size,
+                    "dt": self.data.num2date(order.executed.dt).strftime("%Y-%m-%d %H:%M:%S")
+                }
+            elif order.issell():
+                self.exit_order_info = {
+                    "type": "sell",
+                    "price": order.executed.price,
+                    "size": order.executed.size,
+                    "dt": self.data.num2date(order.executed.dt).strftime("%Y-%m-%d %H:%M:%S")
+                }
 
     def next(self):
-        # Determine overall trend and generate entry signals (simplified logic)
+        # Determine overall trend and generate entry signals.
         bullTrend = self.emaLongFast[0] > self.emaLongSlow[0]
         bearTrend = self.emaLongFast[0] < self.emaLongSlow[0]
         
@@ -54,36 +75,54 @@ class PineStrategy(bt.Strategy):
         shortSignal = bearTrend and self.emaShortFast[0] < self.emaShortSlow[0] and \
                       self.emaShortFast[-1] >= self.emaShortSlow[-1]
         
+        # If not in a position, check for entry signals.
         if not self.position:
             if longSignal:
                 self.buy()
             elif shortSignal:
                 self.sell()
         else:
-            # For demonstration: exit logic using Fixed exit method.
+            # For an existing position, we use a simplified exit logic (Fixed method).
             entry_price = self.position.price
+            # Convert our fixed percentages from whole numbers to factors.
             if self.position.size > 0:
-                # Note: Since our fixed percentages are now whole numbers representing percentages,
-                # we convert them to factors by dividing by 100.
                 if self.params.exitMethod == "Fixed":
-                    stop = entry_price - (self.atr[0] * self.params.atrStopLossFactor) if self.params.useAtrStopLoss else entry_price * (1 - self.params.fixedStopLossPct / 100)
+                    stop = entry_price - (self.atr[0] * self.params.atrStopLossFactor) if self.params.useAtrStopLoss \
+                        else entry_price * (1 - self.params.fixedStopLossPct / 100)
                     target = entry_price * (1 + self.params.fixedTakeProfitPct / 100)
-                    if self.data.close[0] <= stop or self.data.close[0] >= target:
+                    if self.data.close[0] <= stop:
+                        self._exit_reason = "Stop Loss"
+                        self.close()
+                    elif self.data.close[0] >= target:
+                        self._exit_reason = "Take Profit"
                         self.close()
             elif self.position.size < 0:
                 if self.params.exitMethod == "Fixed":
-                    stop = entry_price + (self.atr[0] * self.params.atrStopLossFactor) if self.params.useAtrStopLoss else entry_price * (1 + self.params.fixedStopLossPct / 100)
+                    stop = entry_price + (self.atr[0] * self.params.atrStopLossFactor) if self.params.useAtrStopLoss \
+                        else entry_price * (1 + self.params.fixedStopLossPct / 100)
                     target = entry_price * (1 - self.params.fixedTakeProfitPct / 100)
-                    if self.data.close[0] >= stop or self.data.close[0] <= target:
+                    if self.data.close[0] >= stop:
+                        self._exit_reason = "Stop Loss"
+                        self.close()
+                    elif self.data.close[0] <= target:
+                        self._exit_reason = "Take Profit"
                         self.close()
 
     def notify_trade(self, trade):
-        # Log trade details when a trade is closed.
+        # Once a trade is closed, log detailed information.
         if trade.isclosed:
-            self.trade_log.append({
+            log_entry = {
                 'Entry Date': self.data.num2date(trade.dtopen).strftime("%Y-%m-%d %H:%M:%S"),
                 'Exit Date': self.data.num2date(trade.dtclose).strftime("%Y-%m-%d %H:%M:%S"),
                 'Size': trade.size,
                 'Entry Price': trade.price,
-                'Profit': trade.pnl
-            })
+                'Profit': trade.pnl,
+                'Exit Reason': self._exit_reason if self._exit_reason is not None else "N/A",
+                'Entry Order': self.entry_order_info,
+                'Exit Order': self.exit_order_info
+            }
+            self.trade_log.append(log_entry)
+            # Reset temporary variables.
+            self._exit_reason = None
+            self.entry_order_info = {}
+            self.exit_order_info = {}
