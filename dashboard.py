@@ -36,7 +36,7 @@ DEFAULT_PARAMS = {
     "enableSessionFilter": False,
 }
 
-# Define the layout.
+# Define the layout with a refined, modern look.
 app.layout = html.Div(
     style={'backgroundColor': '#222', 'color': '#FFC107', 'padding': '20px', 'fontFamily': 'Arial'},
     children=[
@@ -64,34 +64,34 @@ app.layout = html.Div(
                 )
             ], style={'display': 'inline-block', 'marginRight': '30px'}),
             html.Div([
-                html.Button("Run Backtest", id="run-backtest", n_clicks=0, style={'marginRight': '10px'}),
-                html.Button("Run Optimization", id="run-optimization", n_clicks=0)
+                html.Button("Run Backtest", id="run-backtest", n_clicks=0, style={'padding': '10px 20px', 'fontSize': '16px', 'marginRight': '10px'}),
+                html.Button("Run Optimization", id="run-optimization", n_clicks=0, style={'padding': '10px 20px', 'fontSize': '16px'})
             ], style={'display': 'inline-block'})
         ], style={'textAlign': 'center', 'marginBottom': '40px'}),
-        # Chart Section (on Top)
+        # Chart Section (on top)
         dcc.Loading(
             id="loading-chart",
             type="default",
             children=[dcc.Graph(id='price-chart')]
         ),
         html.Hr(style={'borderColor': '#FFC107', 'marginTop': '40px'}),
-        # Metrics & Trade Log Section (at the Bottom)
+        # Metrics & Trade Log Section (at the bottom)
         dcc.Loading(
             id="loading-metrics",
             type="default",
             children=[html.Div(id="output-metrics")]
         ),
-        # Hidden Store to keep trade log data for CSV download.
+        # Hidden store for trade log CSV download
         dcc.Store(id='trade-log-store'),
-        # Download Button Section
         html.Div([
-            html.Button("Download Trade Log CSV", id="download-btn", n_clicks=0, style={'padding': '10px 20px', 'fontSize': '16px'}),
+            html.Button("Download Trade Log CSV", id="download-btn", n_clicks=0,
+                        style={'padding': '10px 20px', 'fontSize': '16px', 'marginTop': '20px'}),
             dcc.Download(id="download-trade-log")
-        ], style={'textAlign': 'center', 'marginTop': '30px'})
+        ], style={'textAlign': 'center'})
     ]
 )
 
-# Main callback: update metrics, chart, and store trade log data.
+# Callback to update metrics, chart, and store trade log data.
 @app.callback(
     [Output("output-metrics", "children"),
      Output("price-chart", "figure"),
@@ -121,6 +121,7 @@ def update_dashboard(n_backtest, n_optimization, symbol, timeframe):
         net_profit = final_value - initial_value
         num_trades = len(trade_log)
         
+        # Build the metrics section.
         metrics_components = [
             html.P(f"Initial Portfolio Value: {initial_value:.2f}"),
             html.P(f"Final Portfolio Value: {final_value:.2f}"),
@@ -130,7 +131,8 @@ def update_dashboard(n_backtest, n_optimization, symbol, timeframe):
             html.Pre(json.dumps(DEFAULT_PARAMS, indent=2))
         ]
         
-        if trade_log:
+        # Build the trade log section.
+        if trade_log and len(trade_log) > 0:
             trades_table = dash_table.DataTable(
                 columns=[{"name": col, "id": col} for col in trade_log[0].keys()],
                 data=trade_log,
@@ -146,6 +148,7 @@ def update_dashboard(n_backtest, n_optimization, symbol, timeframe):
         
         metrics_output = html.Div(metrics_components, style={'marginTop': '20px', 'padding': '10px', 'border': '1px solid #FFC107'})
         
+        # Build the chart.
         df = get_historical_data(symbol=symbol, interval=timeframe, start_str='1 month ago UTC')
         fig = go.Figure(data=[go.Candlestick(
             x=df.index,
@@ -167,7 +170,7 @@ def update_dashboard(n_backtest, n_optimization, symbol, timeframe):
     
     return metrics_output, fig, trade_log_data
 
-# Callback for downloading the trade log as CSV.
+# Callback to download the trade log as a CSV file.
 @app.callback(
     Output("download-trade-log", "data"),
     Input("download-btn", "n_clicks"),
