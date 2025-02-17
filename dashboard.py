@@ -111,6 +111,7 @@ def update_dashboard(n_backtest, n_optimization, symbol, timeframe):
         ]
         
         if trade_log:
+            # Display the full trade log table with all columns.
             table = dash_table.DataTable(
                 columns=[{"name": col, "id": col} for col in trade_log[0].keys()],
                 data=trade_log,
@@ -121,6 +122,9 @@ def update_dashboard(n_backtest, n_optimization, symbol, timeframe):
             metrics_components.append(html.Hr())
             metrics_components.append(html.H3("Trade Log:"))
             metrics_components.append(table)
+        else:
+            metrics_components.append(html.Hr())
+            metrics_components.append(html.P("No trades were executed during this backtest."))
         
         df = get_historical_data(symbol=symbol, interval=timeframe, start_str='1 month ago UTC')
         fig = go.Figure(data=[go.Candlestick(
