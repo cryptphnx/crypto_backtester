@@ -8,11 +8,11 @@ from backtesting import run_backtest
 from ga_optimization import run_optimization
 from data import get_historical_data
 
-# 1. Create the Dash app and expose the underlying Flask server.
+# Create the Dash app and expose the underlying Flask server.
 app = dash.Dash(__name__)
 server = app.server
 
-# 2. Define default strategy parameters used for backtesting.
+# Default strategy parameters used for backtesting.
 DEFAULT_PARAMS = {
     "longTermFastLen": 50,
     "longTermSlowLen": 200,
@@ -36,7 +36,7 @@ DEFAULT_PARAMS = {
     "enableSessionFilter": False,
 }
 
-# 3. Define the layout of the dashboard.
+# Define the layout.
 app.layout = html.Div(
     style={'backgroundColor': 'black', 'color': 'yellow', 'padding': '20px'},
     children=[
@@ -60,13 +60,11 @@ app.layout = html.Div(
                 value='5m'
             )
         ]),
-        # Future: Additional strategy parameter inputs can be added here.
         html.Div([
             html.Button("Run Backtest", id="run-backtest", n_clicks=0, style={'marginRight': '10px'}),
             html.Button("Run Optimization", id="run-optimization", n_clicks=0)
         ]),
         html.Br(),
-        # Wrap outputs in a Loading component to show progress during processing.
         dcc.Loading(
             id="loading-indicator",
             type="default",
@@ -78,7 +76,6 @@ app.layout = html.Div(
     ]
 )
 
-# 4. Define the callbacks.
 @app.callback(
     Output("output-metrics", "children"),
     Output("price-chart", "figure"),
@@ -95,8 +92,8 @@ def update_dashboard(n_backtest, n_optimization, symbol, timeframe):
 
     if button_id == "run-backtest":
         initial_value, final_value, trade_log, cerebro = run_backtest(
-            symbol=symbol, 
-            timeframe=timeframe, 
+            symbol=symbol,
+            timeframe=timeframe,
             start_str='1 month ago UTC',
             strategy_params=DEFAULT_PARAMS
         )
