@@ -1,7 +1,7 @@
 # main.py
 from dashboard import app
 
-# Expose the underlying Flask server (the WSGI callable) as "server"
+# Expose the underlying Flask server as "server"
 server = app.server
 
 if __name__ == '__main__':
