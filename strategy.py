@@ -10,9 +10,9 @@ class PineStrategy(bt.Strategy):
         shortTermSlowLen=20,
         # Exit method: "Fixed", "Trailing", or "ATR"
         exitMethod="Fixed",
-        fixedStopLossPct=0.01,
-        fixedTakeProfitPct=0.02,
-        fixedTrailingPct=0.01,
+        fixedStopLossPct=1,      # Now 1% instead of 0.01
+        fixedTakeProfitPct=2,    # Now 2% instead of 0.02
+        fixedTrailingPct=1.5,    # Now 1.5% instead of 0.01
         atrPeriod=14,
         atrStopLossFactor=1.0,
         atrTakeProfitFactor=2.0,
@@ -60,18 +60,20 @@ class PineStrategy(bt.Strategy):
             elif shortSignal:
                 self.sell()
         else:
-            # Simplified exit logic using Fixed exit method for demonstration.
+            # For demonstration: exit logic using Fixed exit method.
             entry_price = self.position.price
             if self.position.size > 0:
+                # Note: Since our fixed percentages are now whole numbers representing percentages,
+                # we convert them to factors by dividing by 100.
                 if self.params.exitMethod == "Fixed":
-                    stop = entry_price - (self.atr[0] * self.params.atrStopLossFactor) if self.params.useAtrStopLoss else entry_price * (1 - self.params.fixedStopLossPct)
-                    target = entry_price * (1 + self.params.fixedTakeProfitPct)
+                    stop = entry_price - (self.atr[0] * self.params.atrStopLossFactor) if self.params.useAtrStopLoss else entry_price * (1 - self.params.fixedStopLossPct / 100)
+                    target = entry_price * (1 + self.params.fixedTakeProfitPct / 100)
                     if self.data.close[0] <= stop or self.data.close[0] >= target:
                         self.close()
             elif self.position.size < 0:
                 if self.params.exitMethod == "Fixed":
-                    stop = entry_price + (self.atr[0] * self.params.atrStopLossFactor) if self.params.useAtrStopLoss else entry_price * (1 + self.params.fixedStopLossPct)
-                    target = entry_price * (1 - self.params.fixedTakeProfitPct)
+                    stop = entry_price + (self.atr[0] * self.params.atrStopLossFactor) if self.params.useAtrStopLoss else entry_price * (1 + self.params.fixedStopLossPct / 100)
+                    target = entry_price * (1 - self.params.fixedTakeProfitPct / 100)
                     if self.data.close[0] >= stop or self.data.close[0] <= target:
                         self.close()
 
