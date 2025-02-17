@@ -10,9 +10,9 @@ class PineStrategy(bt.Strategy):
         shortTermSlowLen=20,
         # Exit method: "Fixed", "Trailing", or "ATR"
         exitMethod="Fixed",
-        fixedStopLossPct=1,      # default now represents percent (1%)
-        fixedTakeProfitPct=2,    # default now represents percent (2%)
-        fixedTrailingPct=1.5,    # default now represents percent (1.5%)
+        fixedStopLossPct=1,      # expressed as percent (1% = 1)
+        fixedTakeProfitPct=2,    # expressed as percent (2% = 2)
+        fixedTrailingPct=1.5,    # expressed as percent (1.5% = 1.5)
         atrPeriod=14,
         atrStopLossFactor=1.0,
         atrTakeProfitFactor=2.0,
@@ -41,28 +41,28 @@ class PineStrategy(bt.Strategy):
         self.emaShortSlow = bt.indicators.ExponentialMovingAverage(self.data.close, period=self.params.shortTermSlowLen)
         # ATR indicator
         self.atr = bt.indicators.ATR(self.data, period=self.params.atrPeriod)
-        # Initialize trade log and order info holders.
+        # Initialize trade log list and temporary storage for order details and exit reason.
         self.trade_log = []
         self.entry_order_info = {}
         self.exit_order_info = {}
         self._exit_reason = None
 
     def notify_order(self, order):
-        # This method logs order execution details.
+        # Log order details when orders are executed.
         if order.status == order.Completed:
             if order.isbuy():
                 self.entry_order_info = {
-                    "type": "buy",
-                    "price": order.executed.price,
-                    "size": order.executed.size,
-                    "dt": self.data.num2date(order.executed.dt).strftime("%Y-%m-%d %H:%M:%S")
+                    "Type": "Buy",
+                    "Price": order.executed.price,
+                    "Size": order.executed.size,
+                    "Datetime": self.data.num2date(order.executed.dt).strftime("%Y-%m-%d %H:%M:%S")
                 }
             elif order.issell():
                 self.exit_order_info = {
-                    "type": "sell",
-                    "price": order.executed.price,
-                    "size": order.executed.size,
-                    "dt": self.data.num2date(order.executed.dt).strftime("%Y-%m-%d %H:%M:%S")
+                    "Type": "Sell",
+                    "Price": order.executed.price,
+                    "Size": order.executed.size,
+                    "Datetime": self.data.num2date(order.executed.dt).strftime("%Y-%m-%d %H:%M:%S")
                 }
 
     def next(self):
@@ -75,16 +75,15 @@ class PineStrategy(bt.Strategy):
         shortSignal = bearTrend and self.emaShortFast[0] < self.emaShortSlow[0] and \
                       self.emaShortFast[-1] >= self.emaShortSlow[-1]
         
-        # If not in a position, check for entry signals.
         if not self.position:
             if longSignal:
                 self.buy()
             elif shortSignal:
                 self.sell()
         else:
-            # For an existing position, we use a simplified exit logic (Fixed method).
+            # For an existing position, exit if the price reaches the stop or target.
             entry_price = self.position.price
-            # Convert our fixed percentages from whole numbers to factors.
+            # Convert fixed percentages from whole numbers to factors.
             if self.position.size > 0:
                 if self.params.exitMethod == "Fixed":
                     stop = entry_price - (self.atr[0] * self.params.atrStopLossFactor) if self.params.useAtrStopLoss \
@@ -109,7 +108,7 @@ class PineStrategy(bt.Strategy):
                         self.close()
 
     def notify_trade(self, trade):
-        # Once a trade is closed, log detailed information.
+        # When a trade is closed, log all relevant details.
         if trade.isclosed:
             log_entry = {
                 'Entry Date': self.data.num2date(trade.dtopen).strftime("%Y-%m-%d %H:%M:%S"),
@@ -122,7 +121,7 @@ class PineStrategy(bt.Strategy):
                 'Exit Order': self.exit_order_info
             }
             self.trade_log.append(log_entry)
-            # Reset temporary variables.
+            # Reset temporary storage.
             self._exit_reason = None
             self.entry_order_info = {}
             self.exit_order_info = {}
