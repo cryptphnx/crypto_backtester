@@ -18,9 +18,9 @@ DEFAULT_PARAMS = {
     "longTermSlowLen": 200,
     "shortTermFastLen": 10,
     "shortTermSlowLen": 20,
-    "fixedStopLossPct": 1,      # updated default
-    "fixedTakeProfitPct": 2,    # updated default
-    "fixedTrailingPct": 1.5,    # updated default
+    "fixedStopLossPct": 1,
+    "fixedTakeProfitPct": 2,
+    "fixedTrailingPct": 1.5,
     "useAdxFilter": False,
     "adxPeriod": 14,
     "adxThreshold": 20.0,
