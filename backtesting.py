@@ -11,9 +11,8 @@ def run_backtest(symbol='BTCUSDT', timeframe='5m', start_str='1 month ago UTC', 
     data = bt.feeds.PandasData(dataname=df)
     cerebro.adddata(data)
     
-    cerebro.broker.setcommission(commission=0.00055)  # 0.055% commission
+    cerebro.broker.setcommission(commission=0.00055)  # 0.055%
     
-    # Record the initial portfolio value
     initial_value = cerebro.broker.getvalue()
     results = cerebro.run()
     final_value = cerebro.broker.getvalue()
