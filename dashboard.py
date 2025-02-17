@@ -36,7 +36,7 @@ DEFAULT_PARAMS = {
     "enableSessionFilter": False,
 }
 
-# Define the layout with a refined, modern look.
+# Define the layout.
 app.layout = html.Div(
     style={'backgroundColor': '#222', 'color': '#FFC107', 'padding': '20px', 'fontFamily': 'Arial'},
     children=[
@@ -75,23 +75,30 @@ app.layout = html.Div(
             children=[dcc.Graph(id='price-chart')]
         ),
         html.Hr(style={'borderColor': '#FFC107', 'marginTop': '40px'}),
-        # Metrics & Trade Log Section (at the bottom)
+        # Metrics Section (middle)
         dcc.Loading(
             id="loading-metrics",
             type="default",
             children=[html.Div(id="output-metrics")]
         ),
-        # Hidden store for trade log CSV download
+        html.Hr(style={'borderColor': '#FFC107', 'marginTop': '40px'}),
+        # Trade Log Section (at the bottom)
+        dcc.Loading(
+            id="loading-trade-log",
+            type="default",
+            children=[html.Div(id="trade-log-div")]
+        ),
+        # Hidden store for trade log CSV download.
         dcc.Store(id='trade-log-store'),
+        # Download Button Section
         html.Div([
-            html.Button("Download Trade Log CSV", id="download-btn", n_clicks=0,
-                        style={'padding': '10px 20px', 'fontSize': '16px', 'marginTop': '20px'}),
+            html.Button("Download Trade Log CSV", id="download-btn", n_clicks=0, style={'padding': '10px 20px', 'fontSize': '16px', 'marginTop': '20px'}),
             dcc.Download(id="download-trade-log")
         ], style={'textAlign': 'center'})
     ]
 )
 
-# Callback to update metrics, chart, and store trade log data.
+# Main callback: Update metrics, chart, and store trade log data.
 @app.callback(
     [Output("output-metrics", "children"),
      Output("price-chart", "figure"),
@@ -121,7 +128,6 @@ def update_dashboard(n_backtest, n_optimization, symbol, timeframe):
         net_profit = final_value - initial_value
         num_trades = len(trade_log)
         
-        # Build the metrics section.
         metrics_components = [
             html.P(f"Initial Portfolio Value: {initial_value:.2f}"),
             html.P(f"Final Portfolio Value: {final_value:.2f}"),
@@ -130,25 +136,12 @@ def update_dashboard(n_backtest, n_optimization, symbol, timeframe):
             html.H3("Strategy Parameters Used:"),
             html.Pre(json.dumps(DEFAULT_PARAMS, indent=2))
         ]
-        
-        # Build the trade log section.
         if trade_log and len(trade_log) > 0:
-            trades_table = dash_table.DataTable(
-                columns=[{"name": col, "id": col} for col in trade_log[0].keys()],
-                data=trade_log,
-                style_table={'overflowX': 'auto'},
-                style_cell={'textAlign': 'left', 'backgroundColor': '#222', 'color': '#FFC107'},
-                page_size=10
-            )
-            trades_section = [html.H3("Trade Log:"), trades_table]
-            metrics_components += trades_section
             trade_log_data = trade_log
         else:
-            metrics_components.append(html.P("No trades were executed during this backtest."))
-        
+            trade_log_data = []  # Ensure we return an empty list rather than None.
         metrics_output = html.Div(metrics_components, style={'marginTop': '20px', 'padding': '10px', 'border': '1px solid #FFC107'})
         
-        # Build the chart.
         df = get_historical_data(symbol=symbol, interval=timeframe, start_str='1 month ago UTC')
         fig = go.Figure(data=[go.Candlestick(
             x=df.index,
@@ -167,10 +160,30 @@ def update_dashboard(n_backtest, n_optimization, symbol, timeframe):
             html.Pre(json.dumps(best_params, indent=2))
         ], style={'marginTop': '20px', 'padding': '10px', 'border': '1px solid #FFC107'})
         fig = go.Figure()
-    
+
     return metrics_output, fig, trade_log_data
 
-# Callback to download the trade log as a CSV file.
+# Callback: Update trade log table from the stored trade log data.
+@app.callback(
+    Output("trade-log-div", "children"),
+    Input("trade-log-store", "data")
+)
+def update_trade_log_display(trade_log_data):
+    if trade_log_data and len(trade_log_data) > 0:
+        return html.Div([
+            html.H3("Trade Log:"),
+            dash_table.DataTable(
+                columns=[{"name": col, "id": col} for col in trade_log_data[0].keys()],
+                data=trade_log_data,
+                style_table={'overflowX': 'auto'},
+                style_cell={'textAlign': 'left', 'backgroundColor': '#222', 'color': '#FFC107'},
+                page_size=10
+            )
+        ], style={'marginTop': '20px', 'padding': '10px', 'border': '1px solid #FFC107'})
+    else:
+        return html.Div([html.P("No trades were executed during this backtest.")], style={'marginTop': '20px', 'padding': '10px', 'border': '1px solid #FFC107'})
+
+# Callback for downloading the trade log as CSV.
 @app.callback(
     Output("download-trade-log", "data"),
     Input("download-btn", "n_clicks"),
@@ -178,7 +191,7 @@ def update_dashboard(n_backtest, n_optimization, symbol, timeframe):
     prevent_initial_call=True
 )
 def download_trade_log(n_clicks, trade_log_data):
-    if not trade_log_data:
+    if not trade_log_data or len(trade_log_data) == 0:
         return None
     df = pd.DataFrame(trade_log_data)
     return dcc.send_data_frame(df.to_csv, "trade_log.csv", index=False)
