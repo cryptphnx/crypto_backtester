@@ -7,7 +7,6 @@ from data import get_historical_data
 from strategy import PineStrategy
 from backtesting import run_backtest
 
-# Define parameter boundaries for 20 parameters.
 PARAM_BOUNDARIES = [
     (10, 200),      # longTermFastLen
     (100, 400),     # longTermSlowLen
@@ -30,9 +29,8 @@ PARAM_BOUNDARIES = [
     (0, 1),         # enableHigherTFFilter
     (0, 1)          # enableSessionFilter
 ]
-NUM_PARAMS = len(PARAM_BOUNDARIES)  # 20 parameters
+NUM_PARAMS = len(PARAM_BOUNDARIES)
 
-# Set up the DEAP framework.
 creator.create("FitnessMax", base.Fitness, weights=(1.0,))
 creator.create("Individual", list, fitness=creator.FitnessMax)
 
