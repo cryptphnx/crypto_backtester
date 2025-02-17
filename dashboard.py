@@ -41,11 +41,10 @@ app.layout = html.Div(
     style={'backgroundColor': 'black', 'color': 'yellow', 'padding': '20px'},
     children=[
         html.H1("Crypto Backtesting Dashboard"),
+        # Control Panel
         html.Div([
             html.Label("Symbol:"),
-            dcc.Input(id='symbol', type='text', value='BTCUSDT')
-        ]),
-        html.Div([
+            dcc.Input(id='symbol', type='text', value='BTCUSDT', style={'marginRight': '20px'}),
             html.Label("Timeframe:"),
             dcc.Dropdown(
                 id='timeframe',
@@ -57,38 +56,49 @@ app.layout = html.Div(
                     {'label': '1 Day', 'value': '1d'},
                     {'label': '1 Week', 'value': '1w'},
                 ],
-                value='5m'
-            )
-        ]),
-        html.Div([
-            html.Button("Run Backtest", id="run-backtest", n_clicks=0, style={'marginRight': '10px'}),
+                value='5m',
+                style={'width': '150px', 'display': 'inline-block'}
+            ),
+            html.Button("Run Backtest", id="run-backtest", n_clicks=0, style={'marginLeft': '20px', 'marginRight': '10px'}),
             html.Button("Run Optimization", id="run-optimization", n_clicks=0)
-        ]),
-        html.Br(),
+        ], style={'marginBottom': '20px'}),
+        # Chart Section (on top)
         dcc.Loading(
-            id="loading-indicator",
+            id="loading-chart",
             type="default",
             children=[
-                html.Div(id="output-metrics"),
                 dcc.Graph(id='price-chart')
+            ]
+        ),
+        html.Hr(style={'borderColor': 'yellow'}),
+        # Metrics & Trades Log Section (at the bottom)
+        dcc.Loading(
+            id="loading-metrics",
+            type="default",
+            children=[
+                html.Div(id="output-metrics")
             ]
         )
     ]
 )
 
 @app.callback(
-    Output("output-metrics", "children"),
-    Output("price-chart", "figure"),
-    Input("run-backtest", "n_clicks"),
-    Input("run-optimization", "n_clicks"),
-    State("symbol", "value"),
-    State("timeframe", "value")
+    [Output("output-metrics", "children"),
+     Output("price-chart", "figure")],
+    [Input("run-backtest", "n_clicks"),
+     Input("run-optimization", "n_clicks")],
+    [State("symbol", "value"),
+     State("timeframe", "value")]
 )
 def update_dashboard(n_backtest, n_optimization, symbol, timeframe):
     ctx = dash.callback_context
     if not ctx.triggered:
         return "", go.Figure()
     button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+    # Initialize placeholders
+    metrics_output = ""
+    fig = go.Figure()
 
     if button_id == "run-backtest":
         initial_value, final_value, trade_log, cerebro = run_backtest(
@@ -100,31 +110,36 @@ def update_dashboard(n_backtest, n_optimization, symbol, timeframe):
         net_profit = final_value - initial_value
         num_trades = len(trade_log)
         
+        # Build metrics section.
         metrics_components = [
             html.P(f"Initial Portfolio Value: {initial_value:.2f}"),
             html.P(f"Final Portfolio Value: {final_value:.2f}"),
             html.P(f"Net Profit: {net_profit:.2f}"),
             html.P(f"Number of Trades: {num_trades}"),
-            html.Hr(),
             html.H3("Strategy Parameters Used:"),
             html.Pre(json.dumps(DEFAULT_PARAMS, indent=2))
         ]
         
+        # Build trades log section.
         if trade_log:
-            table = dash_table.DataTable(
+            trades_table = dash_table.DataTable(
                 columns=[{"name": col, "id": col} for col in trade_log[0].keys()],
                 data=trade_log,
                 style_table={'overflowX': 'auto'},
                 style_cell={'textAlign': 'left', 'backgroundColor': 'black', 'color': 'yellow'},
                 page_size=10
             )
-            metrics_components.append(html.Hr())
-            metrics_components.append(html.H3("Trade Log:"))
-            metrics_components.append(table)
+            trades_section = [
+                html.H3("Trade Log:"),
+                trades_table
+            ]
         else:
-            metrics_components.append(html.Hr())
-            metrics_components.append(html.P("No trades were executed during this backtest."))
+            trades_section = [html.P("No trades were executed during this backtest.")]
         
+        # Combine metrics and trades log.
+        metrics_output = html.Div(metrics_components + trades_section, style={'marginTop': '20px'})
+        
+        # Build the chart.
         df = get_historical_data(symbol=symbol, interval=timeframe, start_str='1 month ago UTC')
         fig = go.Figure(data=[go.Candlestick(
             x=df.index,
@@ -134,17 +149,18 @@ def update_dashboard(n_backtest, n_optimization, symbol, timeframe):
             close=df['close']
         )])
         fig.update_layout(template='plotly_dark', title=f"{symbol} Price Chart ({timeframe})")
-        return metrics_components, fig
 
     elif button_id == "run-optimization":
         best_value, best_params = run_optimization(symbol=symbol, timeframe=timeframe)
-        metrics_components = [
+        metrics_output = html.Div([
             html.P(f"Best Portfolio Value from Optimization: {best_value:.2f}"),
-            html.Hr(),
             html.H3("Best Strategy Parameters:"),
             html.Pre(json.dumps(best_params, indent=2))
-        ]
-        return metrics_components, go.Figure()
+        ], style={'marginTop': '20px'})
+        # Optionally, you could display a chart here if desired.
+        fig = go.Figure()
+
+    return metrics_output, fig
 
 if __name__ == "__main__":
     app.run_server(debug=True)
