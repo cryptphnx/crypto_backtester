@@ -7,7 +7,7 @@ from data import get_historical_data
 from strategy import PineStrategy
 from backtesting import run_backtest
 
-# Define parameter boundaries for 20 parameters
+# Update parameter boundaries for 20 parameters.
 PARAM_BOUNDARIES = [
     (10, 200),      # longTermFastLen
     (100, 400),     # longTermSlowLen
@@ -32,7 +32,6 @@ PARAM_BOUNDARIES = [
 ]
 NUM_PARAMS = len(PARAM_BOUNDARIES)  # 20 parameters
 
-# Set up the DEAP framework
 creator.create("FitnessMax", base.Fitness, weights=(1.0,))
 creator.create("Individual", list, fitness=creator.FitnessMax)
 
@@ -48,7 +47,6 @@ toolbox.register("individual", tools.initIterate, creator.Individual, create_ind
 toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 
 def eval_individual(individual):
-    # Convert the individual list into a strategy parameters dictionary.
     params = {
         "longTermFastLen": int(round(individual[0])),
         "longTermSlowLen": int(round(individual[1])),
@@ -71,9 +69,7 @@ def eval_individual(individual):
         "enableHigherTFFilter": True if individual[18] >= 0.5 else False,
         "enableSessionFilter": True if individual[19] >= 0.5 else False,
     }
-
     try:
-        # Run backtest with these parameters.
         init_val, final_val, trade_log, cerebro = run_backtest(
             symbol='BTCUSDT',
             timeframe='5m',
@@ -94,14 +90,13 @@ toolbox.register("select", tools.selTournament, tournsize=3)
 def run_optimization(symbol='BTCUSDT', timeframe='5m', start_str='1 month ago UTC'):
     random.seed(42)
     
-    # Create a multiprocessing pool and register its map function.
     pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
     toolbox.register("map", pool.map)
     
-    pop = toolbox.population(n=50)  # Starting population of 50 individuals.
-    ngen = 10  # Number of generations (adjust as needed)
-    cxpb = 0.5  # Crossover probability
-    mutpb = 0.2  # Mutation probability
+    pop = toolbox.population(n=50)
+    ngen = 10
+    cxpb = 0.5
+    mutpb = 0.2
 
     print("Starting GA optimization with population size:", len(pop), "and generations:", ngen)
     pop, logbook = algorithms.eaSimple(pop, toolbox, cxpb, mutpb, ngen, verbose=True)
